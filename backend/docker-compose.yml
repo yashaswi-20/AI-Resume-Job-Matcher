@@ -9,25 +9,15 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGO_URI=mongodb://mongodb:27017/ai_resume_matcher
-    depends_on:
-      mongodb:
-        condition: service_healthy
+      - MONGO_URI=mongodb://host.docker.internal:27017/ai_resume_matcher
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     restart: unless-stopped
 
-  mongodb:
-    image: mongo:7
-    container_name: ai_resume_mongo
+  frontend:
+    build: ../frontend
+    container_name: ai_resume_frontend
     ports:
-      - '27017:27017'
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - '5173:5173'
+    depends_on:
+      - backend
     restart: unless-stopped
-
-volumes:
-  mongo_data:
