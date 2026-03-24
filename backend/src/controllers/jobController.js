@@ -1,11 +1,9 @@
 const Job = require('../models/Job');
-const Resume = require('../models/Resume');
-const { generateVector } = require('../services/embeddingService');
+const { generateEmbedding } = require('../services/embeddingService');
 
 /**
  * POST /api/jobs
- * Create a new job with full TF-IDF vector.
- * Corpus includes all existing resume texts for IDF consistency.
+ * Create a new job with a Gemini semantic embedding.
  */
 const createJob = async (req, res) => {
   const { title, description, requiredSkills, location } = req.body;
@@ -14,28 +12,29 @@ const createJob = async (req, res) => {
     return res.status(400).json({ success: false, error: '"title" and "description" are required.' });
   }
 
-  // Fetch existing resume texts to build a shared corpus (IDF consistency)
-  const existingResumes = await Resume.find({}, 'extractedText').lean();
-  const corpusTexts = existingResumes.map((r) => r.extractedText);
+  // Combine title + skills + description for a richer embedding
+  const textToEmbed = `${title}. ${description}. Skills: ${
+    Array.isArray(requiredSkills) ? requiredSkills.join(', ') : ''
+  }`;
 
-  const vector = generateVector(description, corpusTexts);
+  const embedding = await generateEmbedding(textToEmbed);
 
   const job = await Job.create({
     title,
     description,
     requiredSkills: Array.isArray(requiredSkills) ? requiredSkills : [],
     location: location || 'Remote',
-    tfidfVector: vector,
+    embedding,
   });
 
   return res.status(201).json({
     success: true,
-    message: 'Job created and vectorized successfully.',
+    message: 'Job created and embedded successfully.',
     data: {
       jobId: job._id,
       title: job.title,
       location: job.location,
-      vectorTerms: Object.keys(vector).length,
+      embeddingDimensions: embedding.length,
       createdAt: job.createdAt,
     },
   });
@@ -43,10 +42,10 @@ const createJob = async (req, res) => {
 
 /**
  * GET /api/jobs
- * Return all jobs (without heavy vector data).
+ * Return all jobs (without heavy embedding data).
  */
 const getJobs = async (_req, res) => {
-  const jobs = await Job.find({}, '-tfidfVector').sort({ createdAt: -1 }).lean();
+  const jobs = await Job.find({}, '-embedding').sort({ createdAt: -1 }).lean();
   return res.status(200).json({ success: true, count: jobs.length, data: jobs });
 };
 

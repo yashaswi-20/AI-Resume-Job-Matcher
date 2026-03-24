@@ -1,13 +1,13 @@
 # 🎯 AI Resume Job Matcher
 
-A premium, full-stack AI-powered application that seamlessly matches candidates' resumes with the most relevant job postings using Natural Language Processing (TF-IDF) and Google's Gemini AI.
+A premium, full-stack AI-powered application that seamlessly matches candidates' resumes with the most relevant job postings using Gemini Semantic Embeddings and Cosine Similarity.
 
 ![AI Resume Matcher Banner](https://img.shields.io/badge/AI_Powered-Resume_Matching-blueviolet?style=for-the-badge)
 
 ## ✨ Features
 
 - **🧠 Smart AI Parsing:** Uses Google Gemini to accurately extract and structure text from uploaded resumes (PDF or DOCX).
-- **⚖️ Advanced Matching Algorithm:** Employs TF-IDF (Term Frequency-Inverse Document Frequency) and cosine similarity to mathematical rank jobs against a given resume.
+- **⚖️ Advanced Matching Algorithm:** Employs Google's Gemini API for state-of-the-art semantic embeddings and cosine similarity to mathematically rank jobs based on meaning, not just keywords.
 - **💼 Job Management Portal:** Effortlessly create, view, and manage jobs directly from the database.
 - **💎 Premium UI/UX:** Built with React and Tailwind CSS v4, featuring a modern, clean, high-contrast design (glassmorphism, micro-animations, dropzones).
 - **💡 AI Improvement Advice:** Generates tailored, actionable advice on how to improve a specific resume for a specific job match.
@@ -27,7 +27,7 @@ A premium, full-stack AI-powered application that seamlessly matches candidates'
 - **Database:** MongoDB (via Mongoose)
 - **AI Integration:** Google GenAI SDK (Gemini)
 - **File Handling:** Multer, `pdf-parse` (for PDF), `mammoth` (for DOCX)
-- **NLP Analysis:** `natural` package (for TF-IDF matching)
+- **NLP Analysis:** Cosine similarity for matching dense embedding vectors.
 
 ---
 

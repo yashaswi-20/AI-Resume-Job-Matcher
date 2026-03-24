@@ -1,14 +1,11 @@
 const Resume = require('../models/Resume');
-const Job = require('../models/Job');
 const { parseResume } = require('../services/resumeParser');
-const { generateVector } = require('../services/embeddingService');
-
+const { generateEmbedding } = require('../services/embeddingService');
 
 /**
  * POST /api/resume/upload
  * Accepts a resume file (PDF or DOCX), extracts text,
- * generates a TF-IDF vector using the full corpus for IDF consistency,
- * and saves the resume to MongoDB.
+ * generates a Gemini semantic embedding, and saves to MongoDB.
  */
 const uploadResume = async (req, res) => {
   if (!req.file) {
@@ -17,7 +14,7 @@ const uploadResume = async (req, res) => {
 
   const { originalname, mimetype, buffer } = req.file;
 
-  // 1. Extract text — catch parsing errors (corrupt / empty files) gracefully
+  // 1. Extract text
   let extractedText;
   try {
     extractedText = await parseResume(buffer, mimetype);
@@ -31,29 +28,25 @@ const uploadResume = async (req, res) => {
     return res.status(422).json({ success: false, error: 'Could not extract meaningful text from the resume.' });
   }
 
-  // 2. Fetch all existing job texts to build corpus context for consistent IDF
-  const existingJobs = await Job.find({}, 'description').lean();
-  const corpusTexts = existingJobs.map((j) => j.description);
+  // 2. Generate Gemini embedding
+  const embedding = await generateEmbedding(extractedText);
 
-  // 3. Generate TF-IDF vector
-  const vector = generateVector(extractedText, corpusTexts);
-
-  // 4. Save resume
+  // 3. Save resume
   const resume = await Resume.create({
     originalName: originalname,
     mimeType: mimetype,
     extractedText,
-    tfidfVector: vector,
+    embedding,
   });
 
   return res.status(201).json({
     success: true,
-    message: 'Resume uploaded and vectorized successfully.',
+    message: 'Resume uploaded and embedded successfully.',
     data: {
       resumeId: resume._id,
       originalName: resume.originalName,
       textLength: extractedText.length,
-      vectorTerms: Object.keys(vector).length,
+      embeddingDimensions: embedding.length,
       createdAt: resume.createdAt,
     },
   });

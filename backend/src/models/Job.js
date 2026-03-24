@@ -20,10 +20,9 @@ const jobSchema = new mongoose.Schema(
       default: 'Remote',
       trim: true,
     },
-    tfidfVector: {
-      type: Map,
-      of: Number,
-      default: {},
+    embedding: {
+      type: [Number],
+      default: [],
     },
   },
   { timestamps: true }

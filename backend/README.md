@@ -1,56 +1,51 @@
 # AI Resume–Job Matcher
 
-A production-quality backend service that matches resumes to job descriptions using **TF-IDF vectorization** and **cosine similarity** — 100% free, no API keys required.
+A production-quality backend service that matches resumes to job descriptions using **Google Gemini Semantic Embeddings** and **cosine similarity**.
 
 ---
 
 ## Architecture
 
-```
-Client (HTTP)
-    ↓
-Express API Server  (server.js)
-    ↓
-Controllers  →  Services  →  MongoDB (Mongoose)
-    ↓               ↓
-Upload (Multer)   TF-IDF Vectorization (natural)
-                  Resume Parser (pdf-parse / mammoth)
-                  Cosine Similarity Matching
+```mermaid
+graph TD
+    Client[Client (HTTP)] --> Express[Express API Server (server.js)]
+    Express --> Controllers[Controllers]
+    Controllers --> Services[Services]
+    Services --> MongoDB[(MongoDB)]
+    Services --> Gemini[Gemini Embeddings (embeddingService)]
+    Services --> Parser[Resume Parser (pdf-parse / mammoth)]
+    Services --> Similarity[Cosine Similarity Matching]
 ```
 
 ---
 
-## How Embeddings Work (TF-IDF)
+## How Embeddings Work (Gemini)
 
-Instead of calling an external AI API, we use **Term Frequency–Inverse Document Frequency (TF-IDF)**:
+Instead of simple keyword matching, we use **Google's `gemini-embedding-001` model** to convert text into dense mathematical vectors:
 
 | Concept | Meaning |
 |---------|---------|
-| **TF** | How often a word appears in *this* document |
-| **IDF** | How rare the word is across *all* documents |
-| **TF-IDF score** | High for words that are unique to a document |
+| **Semantic Meaning** | Captures the *intent* and *context* of words. |
+| **Dense Vector** | A 768-dimensional array of numbers representing the text. |
+| **Contextual Linking** | Matches "Node.js" with "Backend Development" even without shared keywords. |
 
-Each resume and job gets a **sparse vector** `{ term: score }` stored in MongoDB. Common words like "the", "and" are automatically filtered out.
-
-### IDF Consistency
-
-On each vectorization, we pass the full corpus of existing documents so IDF weights are globally consistent — identical scores whether the server just started or has been running for days.
+Each resume and job has its embedding generated once and stored in MongoDB. Since Gemini embeddings are absolute, they remain valid even as the database grows.
 
 ---
 
 ## How Cosine Similarity Works
 
-Given two sparse vectors **A** (resume) and **B** (job):
+Given two dense vectors **A** (resume) and **B** (job):
 
-```
+```math
 similarity = (A · B) / (|A| × |B|)
 ```
 
-- Score = **1.0** → identical vocabulary
-- Score = **0.0** → no shared terms
-- Only shared terms contribute (sparse optimization)
+- Score = **1.0** → Identical semantic meaning.
+- Score = **0.6 - 0.9** → Strong career/skill alignment.
+- Score = **< 0.4** → Minimal relevance.
 
-Jobs are ranked by descending similarity; top 10 are returned.
+Jobs are ranked by descending similarity; the top 10 are returned.
 
 ---
 
@@ -71,8 +66,7 @@ curl -X POST http://localhost:3000/api/resume/upload \
   "data": {
     "resumeId": "65f3a...",
     "originalName": "my_cv.pdf",
-    "textLength": 1842,
-    "vectorTerms": 134
+    "textLength": 1842
   }
 }
 ```
@@ -196,7 +190,7 @@ ai-resume-matcher/
 │   │   └── Job.js
 │   ├── services/
 │   │   ├── resumeParser.js     # PDF + DOCX text extraction
-│   │   ├── embeddingService.js # TF-IDF vectorization
+│   │   ├── embeddingService.js # Gemini semantic embeddings
 │   │   └── matchingService.js  # Cosine similarity ranking
 │   ├── controllers/
 │   │   ├── resumeController.js

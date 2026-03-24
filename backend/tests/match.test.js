@@ -3,6 +3,11 @@ const mongoose = require('mongoose');
 const app = require('../server');
 const Resume = require('../src/models/Resume');
 const Job = require('../src/models/Job');
+const embeddingService = require('../src/services/embeddingService');
+
+jest.mock('../src/services/embeddingService', () => ({
+  generateEmbedding: jest.fn(),
+}));
 
 let resumeId;
 
@@ -15,7 +20,7 @@ beforeAll(async () => {
     description: 'build rest apis express nodejs mongodb backend services',
     requiredSkills: ['Node.js', 'Express'],
     location: 'Remote',
-    tfidfVector: { nodejs: 0.7, express: 0.5, mongodb: 0.4, backend: 0.6 },
+    embedding: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
   });
 
   // Seed a resume with a similar vector
@@ -23,9 +28,11 @@ beforeAll(async () => {
     originalName: 'test-resume.pdf',
     mimeType: 'application/pdf',
     extractedText: 'nodejs express mongodb REST APIs backend engineer',
-    tfidfVector: { nodejs: 0.8, express: 0.6, backend: 0.5, rest: 0.4 },
   });
   resumeId = resume._id.toString();
+
+  // Mock embedding service to return a vector of same length as job embedding
+  embeddingService.generateEmbedding.mockResolvedValue([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
 });
 
 afterAll(async () => {

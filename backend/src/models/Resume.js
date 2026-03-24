@@ -16,10 +16,9 @@ const resumeSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    tfidfVector: {
-      type: Map,
-      of: Number,
-      default: {},
+    embedding: {
+      type: [Number],
+      default: [],
     },
   },
   { timestamps: true }

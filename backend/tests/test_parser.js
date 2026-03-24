@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { parseResume } = require('./src/services/resumeParser');
+const { parseResume } = require('../src/services/resumeParser');
 
 async function test() {
   try {

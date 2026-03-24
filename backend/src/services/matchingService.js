@@ -1,17 +1,22 @@
 const Resume = require('../models/Resume');
 const Job = require('../models/Job');
 const { cosineSimilarity } = require('../utils/similarity');
+const { generateEmbedding } = require('./embeddingService');
 
 /**
- * Match a resume against all jobs in the database.
+ * Match a resume against all jobs using Gemini semantic embeddings.
+ *
+ * Unlike TF-IDF, Gemini embeddings are absolute — they capture the
+ * meaning of text regardless of what other documents exist. This means:
+ *  - Stored embeddings remain valid when new jobs are added
+ *  - "Memory management" and "Virtual Memory Simulator" are recognised
+ *    as semantically related, even without shared keywords
  *
  * Flow:
- *  1. Fetch resume by ID (need its stored tfidfVector)
- *  2. Fetch all jobs that have a non-empty tfidfVector
+ *  1. Fetch resume (use stored embedding, or generate if missing)
+ *  2. Fetch all jobs with embeddings
  *  3. Compute cosine similarity between resume and each job
  *  4. Sort descending, return top 10
- *
- * Note: Vectors stored as Mongoose Maps — converted to plain objects first.
  *
  * @param {string} resumeId
  * @returns {Promise<Array<{ jobId, jobTitle, location, similarityScore }>>}
@@ -24,23 +29,28 @@ async function matchResumeToJobs(resumeId) {
     throw err;
   }
 
-  const resumeVec = Object.fromEntries(resume.tfidfVector);
-
-  if (Object.keys(resumeVec).length === 0) {
-    const err = new Error('Resume has no TF-IDF vector. Please re-upload.');
-    err.statusCode = 422;
-    throw err;
+  // Use stored embedding, or generate one on-the-fly if missing
+  let resumeEmbedding = resume.embedding;
+  if (!resumeEmbedding || resumeEmbedding.length === 0) {
+    if (!resume.extractedText || resume.extractedText.length < 10) {
+      const err = new Error('Resume has no usable text. Please re-upload.');
+      err.statusCode = 422;
+      throw err;
+    }
+    resumeEmbedding = await generateEmbedding(resume.extractedText);
+    // Save it for future use
+    resume.embedding = resumeEmbedding;
+    await resume.save();
   }
 
-  const jobs = await Job.find({ tfidfVector: { $exists: true, $ne: {} } });
+  const jobs = await Job.find({ embedding: { $exists: true, $not: { $size: 0 } } });
 
   if (jobs.length === 0) {
     return [];
   }
 
   const scored = jobs.map((job) => {
-    const jobVec = Object.fromEntries(job.tfidfVector);
-    const score = cosineSimilarity(resumeVec, jobVec);
+    const score = cosineSimilarity(resumeEmbedding, job.embedding);
     return {
       jobId: job._id,
       jobTitle: job.title,
